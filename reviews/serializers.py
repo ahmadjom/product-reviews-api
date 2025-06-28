@@ -91,3 +91,12 @@ class ReviewInteractionSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'created_at']
 
 ##⬆
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'read', 'created_at', 'related_review']
+
+class BannedWordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BannedWord
+        fields = ['id', 'word', 'replacement']
