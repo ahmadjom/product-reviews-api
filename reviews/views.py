@@ -146,6 +146,67 @@ class ProductViewSet(viewsets.ModelViewSet):
         reviews = product.reviews.filter(visible=True)
         serializer = ReviewSerializer(reviews, many=True, context={'request': request})
         return Response(serializer.data)
+    #تصدير الى ملف Excel
+    @action(detail=True, methods=['get'])
+    def export_reviews(self, request, pk=None):
+        product = self.get_object()
+        reviews = product.reviews.filter(approved=True)
+        
+        format = request.query_params.get('format', 'csv')
+        
+        if format == 'csv':
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="{product.name}_reviews.csv"'
+            
+            writer = csv.writer(response)
+            writer.writerow(['User', 'Rating', 'Title', 'Content', 'Date', 'Helpful', 'Not Helpful'])
+            
+            for review in reviews:
+                writer.writerow([
+                    review.user.username,
+                    review.rating,
+                    review.title,
+                    review.content,
+                    review.created_at.strftime('%Y-%m-%d'),
+                    review.helpful_count,
+                    review.not_helpful_count
+                ])
+            
+            return response
+        
+        elif format == 'excel':
+            output = BytesIO()
+            workbook = openpyxl.Workbook()
+            worksheet = workbook.active
+            worksheet.title = "Reviews"
+            
+            # كتابة العناوين
+            worksheet.append(['User', 'Rating', 'Title', 'Content', 'Date', 'Helpful', 'Not Helpful'])
+            
+            # كتابة البيانات
+            for review in reviews:
+                worksheet.append([
+                    review.user.username,
+                    review.rating,
+                    review.title,
+                    review.content,
+                    review.created_at.strftime('%Y-%m-%d'),
+                    review.helpful_count,
+                    review.not_helpful_count
+                ])
+            
+            workbook.save(output)
+            output.seek(0)
+            
+            response = HttpResponse(
+                output.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = f'attachment; filename="{product.name}_reviews.xlsx"'
+            return response
+        
+        return Response({'error': 'Invalid format'}, status=400)
+
 
 class ReviewCommentViewSet(viewsets.ModelViewSet):
     queryset = ReviewComment.objects.all()
